@@ -3,7 +3,7 @@ import numpy as np
 
 def get_words_in_file(filename):
     """ Returns a list of all words in the file at filename. """
-    with open(filename, 'r') as f:
+    with open(filename, 'r', encoding='ISO-8859-1') as f:
         # read() reads in a string from a file pointer, and split() splits a
         # string into words based on whitespace
         words = f.read().split()

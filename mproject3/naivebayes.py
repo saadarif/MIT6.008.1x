@@ -160,7 +160,7 @@ def classify_emails(spam_files, ham_files, test_files):
 def main():
     ### Read arguments
     if len(sys.argv) != 4:
-        print USAGE % sys.argv[0]
+        print(USAGE % sys.argv[0])
     testing_folder = sys.argv[1]
     (spam_folder, ham_folder) = sys.argv[2:4]
 
