@@ -1,4 +1,5 @@
 import os
+import numpy as np
 
 def get_words_in_file(filename):
     """ Returns a list of all words in the file at filename. """
@@ -14,3 +15,10 @@ def get_files_in_folder(folder):
     # os.path.join combines paths while dealing with /s and \s appropriately
     full_filenames = [os.path.join(folder, filename) for filename in filenames]
     return full_filenames
+
+def careful_log(x):
+    # computes the log of a non-negative real number
+    if x == 0:
+        return -np.inf
+    else:
+        return np.log(x)

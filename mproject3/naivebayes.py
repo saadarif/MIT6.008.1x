@@ -1,6 +1,8 @@
 import sys
 import os.path
 import numpy as np
+from collections import defaultdict, Counter
+
 
 import util
 
@@ -19,9 +21,22 @@ def get_counts(file_list):
     ------
     A dict whose keys are words, and whose values are the number of files the
     key occurred in.
-    """
-    ### TODO: Comment out the following line and write your code here
-    raise NotImplementedError
+    """   
+    #use defaultdict to avoid key error when encounterin a new word 
+    #in the dictionary
+    words_dict=Counter()
+    #Add a pseudocount to every entry seen/unseen (smoothing)
+    words_dict=defaultdict(lambda:1)
+    
+    for file in file_list:
+        #use util function to get a list of all words in a file
+        #one occure in each email file is enough
+        words_in_file=set(util.get_words_in_file(file))
+        
+        for word in words_in_file:
+            words_dict[word]+=1
+            
+    return words_dict
 
 def get_log_probabilities(file_list):
     """
@@ -43,9 +58,14 @@ def get_log_probabilities(file_list):
     The data structure util.DefaultDict will be useful to you here, as will the
     get_counts() helper above.
     """
-    ### TODO: Comment out the following line and write your code here
-    raise NotImplementedError
+    #Count the number of files
+    numFiles=len(file_list)
+    #get counts of all words appearing in files in file list
+    words = get_counts(file_list)
+    
+    words_log = {word: util.careful_log(counts) for word, counts in words.items()}
 
+    return words_log
 
 def learn_distributions(file_lists_by_category):
     """
@@ -67,8 +87,20 @@ def learn_distributions(file_lists_by_category):
                             each class:
                             [est. for log P(c=spam), est. for log P(c=ham)]
     """
-    ### TODO: Comment out the following line and write your code here
-    raise NotImplementedError
+    #initalize list of dictionary for storing log probabilities of word occurences
+    log_probabilities_by_category=[]
+    #intialize list of counts for being ham or spam
+    log_prior=[]
+    total_emails = sum([len(cat) for cat in file_lists_by_category])
+    
+    for index in range(0, len(file_lists_by_category)):
+        #for each element of list get log probabilities of word counts
+        log_probabilities_by_category.append(get_log_probabilities(file_lists_by_category[index]))
+        #calclogpriors
+        class_counts=len(file_lists_by_category[index])
+        log_prior.append(util.careful_log(class_counts/total_emails))
+
+    return log_probabilities_by_category, log_prior
 
 def classify_email(email_filename,
                    log_probabilities_by_category,
@@ -88,8 +120,31 @@ def classify_email(email_filename,
     ------
     One of the labels in names.
     """
-    ### TODO: Comment out the following line and write your code here
-    return 'spam'
+   
+    #labels: 0 us spam, 1:spam, use for return value
+    labels={0:'spam', 1:'ham'}
+    
+    #get unique occurences of word in each file
+    new_words=set(util.get_words_in_file(email_filename))
+    
+    #calcualte posterior distribution for spam and ham
+    posterior_dist=[]
+    for label in labels:
+        posterior_dist.append(log_prior_by_category[label])
+        for word in new_words:
+            #p_i or q_i
+            if word in log_probabilities_by_category[label]:
+                posterior_dist[label] += log_probabilities_by_category[label][word]
+            #1-p_i or q_i
+            else:
+                posterior_dist[label] += 1-log_probabilities_by_category[label][word]
+    
+    #return MAP from log odds
+    if posterior_dist[0]/posterior_dist[1] >= 0:
+        #return spam
+        return labels[0]
+    else:    
+        return labels[1]
 
 def classify_emails(spam_files, ham_files, test_files):
     # DO NOT MODIFY -- used by the autograder
