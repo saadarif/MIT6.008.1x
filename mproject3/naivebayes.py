@@ -59,12 +59,16 @@ def get_log_probabilities(file_list):
     """
     #Count the number of files 
     numFiles=len(file_list)
+    N_categories = 2
+    
+    log_prob = defaultdict(lambda : -np.log(numFiles + N_categories))
     #get counts of all words appearing in files in file list
     words = get_counts(file_list)
     
-    words_log = {word: util.careful_log(counts/numFiles) for word, counts in words.items()}
-
-    return words_log
+    for word in words:
+        log_prob[word]=util.careful_log(words[word]+1) - util.careful_log(numFiles+N_categories)
+        assert log_prob[word] < 0
+    return log_prob
 
 def learn_distributions(file_lists_by_category):
     """
@@ -99,7 +103,7 @@ def learn_distributions(file_lists_by_category):
         class_counts=len(file_lists_by_category[index])
         log_prior.append(util.careful_log(class_counts/total_emails))
 
-    return log_probabilities_by_category, log_prior
+    return (log_probabilities_by_category, log_prior)
 
 def classify_email(email_filename,
                    log_probabilities_by_category,
@@ -125,11 +129,17 @@ def classify_email(email_filename,
     
     #get unique occurences of word in each file
     new_words=set(util.get_words_in_file(email_filename))
+    
+    all_words=[]
+    for i in range(len(labels)):
+        all_words += log_probabilities_by_category[i].keys()
+    all_words=list(set(all_words))
+        
     #calcualte posterior distribution for spam and ham
     posterior_dist=[]
     for label in labels:
         posterior_dist.append(log_prior_by_category[label])
-        for word in log_probabilities_by_category[label]:
+        for word in all_words:
             #p_i or q_i
             if word in new_words:
                 posterior_dist[label] += log_probabilities_by_category[label][word]
@@ -137,14 +147,12 @@ def classify_email(email_filename,
             else:
                 posterior_dist[label] += util.careful_log(1-np.exp(log_probabilities_by_category[label][word]))
     
-    print(posterior_dist[0] - posterior_dist[1])
+    #print(posterior_dist[0] - posterior_dist[1])
     #return MAP from log odds
-    if posterior_dist[0] - posterior_dist[1] >= 0:
+    map=np.argmax(posterior_dist)
         #return spam
-        return labels[0]
-    else:    
-        return labels[1]
-
+    return labels[map]
+    
 def classify_emails(spam_files, ham_files, test_files):
     # DO NOT MODIFY -- used by the autograder
     log_probabilities_by_category, log_prior = \
@@ -178,7 +186,7 @@ def main():
     ### Classify and measure performance
     for filename in (util.get_files_in_folder(testing_folder)):
         ## Classify
-        print(len(util.get_files_in_folder(testing_folder)))
+        
         label = classify_email(filename,
                                log_probabilities_by_category,
                                log_priors_by_category)
@@ -193,7 +201,7 @@ def main():
         # Uncomment this line to see which files your classifier
         # gets right/wrong:
         print("%s : %s" %(label, filename))
-
+    
     template="You correctly classified %d out of %d spam emails, and %d out of %d ham emails."
     # Correct counts are on the diagonal
     correct = np.diag(performance_measures)
